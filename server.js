@@ -1,60 +1,75 @@
+// server.js
 const express = require("express");
 const bodyParser = require("body-parser");
-const db = require("./database");
+const path = require("path");
+const db = require("./database"); // Asegúrate de que database.js esté configurado
 
 const app = express();
+const PORT = 3000;
 
+// Middleware
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({extended:true}));
+app.use(express.static(path.join(__dirname, "public")));
 
-app.use(express.static("public"));
+// -----------------------
+// RUTAS
+// -----------------------
 
+// Página principal
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/index.html"));
+});
 
+// -----------------------
 // REGISTRO
-app.post("/registro", (req,res)=>{
+// -----------------------
+app.post("/registro", (req, res) => {
+  const { nombre, email, password } = req.body;
 
-    const {nombre,email,password} = req.body;
+  if (!nombre || !email || !password) {
+    return res.send("Por favor completa todos los campos.");
+  }
 
-    const sql = "INSERT INTO usuarios(nombre,email,password) VALUES (?,?,?)";
-
-    db.query(sql,[nombre,email,password],(err,result)=>{
-
-        if(err){
-            res.send("Error al registrar");
-        }else{
-            res.send("Usuario registrado");
-        }
-
-    });
-
+  const sql = "INSERT INTO usuarios (nombre, email, password) VALUES (?, ?, ?)";
+  db.query(sql, [nombre, email, password], (err, result) => {
+    if (err) {
+      console.log(err);
+      return res.send("Error al registrar usuario (¿email ya existe?).");
+    }
+    res.send("Usuario registrado correctamente. <a href='login.html'>Iniciar sesión</a>");
+  });
 });
 
-
+// -----------------------
 // LOGIN
+// -----------------------
+app.post("/login", (req, res) => {
+  const { email, password } = req.body;
 
-app.post("/login",(req,res)=>{
+  if (!email || !password) {
+    return res.send("Por favor ingresa email y contraseña.");
+  }
 
-    const {email,password} = req.body;
+  const sql = "SELECT * FROM usuarios WHERE email=? AND password=?";
+  db.query(sql, [email, password], (err, result) => {
+    if (err) {
+      console.log(err);
+      return res.send("Error en el servidor.");
+    }
 
-    const sql = "SELECT * FROM usuarios WHERE email=? AND password=?";
-
-    db.query(sql,[email,password],(err,result)=>{
-
-        if(result.length > 0){
-            res.send("Login correcto");
-        }else{
-            res.send("Usuario o contraseña incorrectos");
-        }
-
-    });
-
+    if (result.length > 0) {
+      // Usuario correcto → redirige al dashboard
+      res.redirect("dashboard.html");
+    } else {
+      res.send("Usuario o contraseña incorrectos. <a href='login.html'>Intentar de nuevo</a>");
+    }
+  });
 });
 
-
-app.listen(3000,()=>{
-    console.log("Servidor en puerto 3000");
+// -----------------------
+// INICIAR SERVIDOR
+// -----------------------
+app.listen(PORT, () => {
+  console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
-    
-if(result.length > 0){
- res.redirect("dashboard.html");
-}
